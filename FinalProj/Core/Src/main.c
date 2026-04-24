@@ -28,6 +28,12 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+// Setup for Arrays
+typedef struct map_s {
+    int horizontal[3][8];
+    int vertical[2][16];
+}
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -80,6 +86,30 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+ // Initial setup for initializing arrays into 7 seg.
+ draw_board(struct map_s M) {
+    char board[8] = {0};
+
+    // Horizontal (Unsure if it is supposed to flip thru array or just assign values)
+    for i=0 upto 8 {
+      // Top
+      board[i] 1 = horizontal[3][i];
+      // Mid
+      board[i] 1 = {0,1,2,3,4,5,6,7};
+      // Bot
+      board[i] 1 = {0,1,2,3,4,5,6,7};
+    }
+
+    // Vertical
+    for i=0 upto 8 {
+      //Top Left
+      board[i] 1 = ;
+      //Bot Left
+      //Top Right
+      //Bot Right
+    }
+  }
+ 
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
