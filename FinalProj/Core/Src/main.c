@@ -75,6 +75,14 @@ void MX_USB_HOST_Process(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+// For the title scroll, assuming we have the same recourses as lab 11
+char Title_Length = 0;
+char *Title_Pointer;
+char *Save_Pointer;
+
+// BATTLESHIP
+char Title[] = {CHAR_B, CHAR_A, CHAR_T, CHAR_T, CHAR_L, CHAR_E, CHAR_S, CHAR_H, CHAR_I, CHAR_P};
+
 /* USER CODE END 0 */
 
 /**
@@ -137,12 +145,72 @@ int main(void)
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
+  // Some GPIO config from lab 11
+  GPIOD->MODER = 0x55555555; // set all Port D pins to outputs
+  GPIOA->MODER |= 0x000000FF; // Port A mode register - make A0 to A3 analog pins
+  GPIOE->MODER |= 0x55555555; // Port E mode register - make E0 to E15 outputs
+  GPIOC->MODER |= 0x0; // Port C mode register - all inputs
+  GPIOE->ODR = 0xFFFF; // Set all Port E pins high
+
+  // Config ADC1 -- Just in case is needed for timer (from lab 11)
+  RCC->APB2ENR |= 1<<8;  // Turn on ADC1 clock by forcing bit 8 to 1 while keeping other bits unchanged
+  ADC1->SMPR2 |= 1; // 15 clock cycles per sample
+  ADC1->CR2 |= 1;        // Turn on ADC1 by forcing bit 0 to 1 while keeping other bits unchanged
+
+  // Turn on CRC clock
+  RCC->AHB1ENR |= 1<<12; // bit 12 CRCEN on pg 180 for reference
+
+  // Extra functions for the timer, assuming we use the same from lab 11 as implied.
+  TIM7->PSC = 199; //250Khz timer clock prescaler value, 250Khz = 50Mhz / 200
+  TIM7->ARR = 1; // Count to 1 then generate interrupt (divide by 2), 125Khz interrupt rate to increment byte counter for 78Hz PWM
+  TIM7->DIER |= 1; // Enable timer 7 interrupt
+  TIM7->CR1 |= 1; // Enable timer counting
+ 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+   // Implemented Title scroll, Right now is assumed it will only work at the beginning of the game on repeat.
+   int i,j;
+
+	  Title_Pointer = &Title[0];
+	  Save_Pointer = &Title[0];
+	  Title_Length = sizeof(Title)/sizeof(Title[0]);
+	  Delay_msec = 200;
+	  Animate_On = 1;
+
+	  //********* Reset CRC value ********************
+	  CRC->CR = 0x1;
+
+	  //********* Calculate CRC **********************
+	  for (int k = 0; k < Title_Length; k++) {
+		  CRC->DR = Title[k];
+	  }
+   
+	  //********* Read CRC value into CRC_Rx  ********
+	  CRC_Rx = CRC->DR;
+
+	  GPIOD->ODR = CRC_Rx ^ CRC_Tx;  //XOR the sent and received CRC values and display on LEDs
+
+	  HAL_Delay(5000);           // Delay 5 seconds to allow message to scroll
+
+	  Animate_On = 0;            // Stop scrolling message
+	  Seven_Segment(CRC_Tx);     // Display CRC for sent message
+	  HAL_Delay(1000);           // Delay 1 second
+	  for (i=0 ; i<8 ; i++)      // Clear the display
+	  	 {
+	  		  Seven_Segment_Digit(i,SPACE,0);
+  	  }
+
+	  HAL_Delay(500);           // Delay 1/2 second
+	  Seven_Segment(CRC_Rx);    // Display CRC calculated from received message
+	  HAL_Delay(1000);          // Delay for 1 second
+    
+   // End title scroll bit
+   
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
