@@ -34,6 +34,39 @@ typedef struct map_s {
     int vertical[2][16];
 }
 
+// Game state and Initialization
+typedef enum { STATE_TITLE, STATE_P1_PLACE, STATE_P2_PLACE,
+               STATE_P1_TURN, STATE_P2_TURN, STATE_GAME_OVER} GameState;
+GameState game_state = STATE_TITLE;
+  
+  // Boat Maps
+  // Player 1
+  uint32_t p1_vertical_map = 0;
+  uint32_t p1_horizontal_map = 0;
+  // Player 2
+  uint32_t p2_vertical_map = 0;
+  uint32_t p2_horizontal_map = 0;
+
+  // Shot Maps
+  // Player 1
+  uint32_t p1_vertical_shots = 0;
+  uint32_t p1_Horizontal_shots = 0;
+  // Player 2
+  uint32_t p2_vertical_shots = 0;
+  uint32_t p2_horizontal_shots = 0;
+
+  // Cursor Position
+  uint8_t = cursor_row = 0;
+  uint8_t = cursor_col = 0;
+  bool cursor_on_vertical = true;
+
+  // Display Buffer
+  uint8_t display_buffer[8];
+
+  // Timing
+  volatile uint32_t systick_ms = 0;
+  volatile uint8_t pwm_counter = 0;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
