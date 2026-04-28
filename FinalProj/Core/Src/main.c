@@ -184,6 +184,27 @@ uint8_t count_hits(uint32_t shots, uint32_t opponent_map) {
     return count;
 }
 
+// SysTick Handler
+void SysTick_Handler(void) {
+  systick_ms++;
+
+  pwm_counter = (pwm_counter + 1) % 10;
+
+  static uint16_t blink_counter = 0;
+  blink_counter++;
+
+  bool cursor_visible = (blink_counter / 250) % 2;
+
+  // For updating the display, implement later
+  for (int i = 0; i < 8; i++) {
+    // display_buffer[i] to hardware
+  }
+
+  // Extras to add later
+    // 7 seg multiplex
+    // PWM brightness
+}
+
 /* USER CODE END 0 */
 
 /**
