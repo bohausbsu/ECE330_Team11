@@ -116,6 +116,74 @@ char *Save_Pointer;
 // BATTLESHIP
 char Title[] = {CHAR_B, CHAR_A, CHAR_T, CHAR_T, CHAR_L, CHAR_E, CHAR_S, CHAR_H, CHAR_I, CHAR_P};
 
+// Bit Maipulation Sets, May conflict w initial arrays but something to use just in case.
+// Vertical 2x16
+uint32_t get_vert_mask(uint8_t row, uint8_t col) {
+  return (1U << (row * 16 + col));
+}
+// Horizontal 3x8
+uint32_t get_horiz_mask(uint8_t row, uint_t col) {
+  return (1U << (row * 8 + col));
+}
+
+// Cursor from Potentiometers
+void update_cursor_pot(uint16_t adc_x, uint16_t adc_y) {
+  if (cursor_on_vertical) {
+    cursor_col = adc_x / 256; // 0-15
+    cursor_row = adc_y / 2048; // 0-1
+  } else {
+    cursor_col = adc_x / 512; // 0-7
+    cursor_row = adc_y / 1365; // 0-2
+  }
+}
+
+// Boat Placement
+bool place_boat(uint32_t *map, uint8_t row, uint8_t col, bool vertical, bool is_double) {
+    uint32_t mask;
+
+    if (vertical) {
+        mask = get_vert_mask(row, col);
+
+        if (is_double) {
+            if (row == 1) return false; // out of bounds
+            mask |= get_vert_mask(row + 1, col);
+        }
+    } else {
+        mask = get_horiz_mask(row, col);
+
+        if (is_double) {
+            if (col == 7) return false;
+            mask |= get_horiz_mask(row, col + 1);
+        }
+    }
+
+    if ((*map & mask) != 0) return false; // overlap
+
+    *map |= mask;
+    return true;
+}
+
+// Shooting Stuff
+bool take_shot(uint32_t opponent_map, uint32_t *shot_map, uint32_t mask) {
+    *shot_map |= mask;
+
+    if (opponent_map & mask) {
+        return true; // HIT
+    }
+    return false; // MISS
+}
+
+// Win Check
+uint8_t count_hits(uint32_t shots, uint32_t opponent_map) {
+    uint32_t hits = shots & opponent_map;
+
+    uint8_t count = 0;
+    for (int i = 0; i < 32; i++) {
+        if (hits & (1U << i)) count++;
+    }
+    return count;
+}
+
 /* USER CODE END 0 */
 
 /**
