@@ -1,0 +1,48 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Lab11",
+      "type": "shell",
+      "command": "cmake --build build/Debug",
+      "group": "build",
+      "problemMatcher": ["$gcc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Convert to Binary",
+      "type": "shell",
+      "command": "\"/Users/bohaus/Library/Application Support/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-objcopy\" -O binary build/Debug/Lab11.elf build/Debug/Lab11.bin",
+      "dependsOn": ["Build Lab11"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Flash to STM32",
+      "type": "shell",
+      "command": "st-flash write build/Debug/Lab11.bin 0x8000000",
+      "dependsOn": ["Convert to Binary"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Build & Flash",
+      "type": "shell",
+      "command": "cmake --build build/Debug && \"/Users/bohaus/Library/Application Support/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-objcopy\" -O binary build/Debug/Lab11.elf build/Debug/Lab11.bin && st-flash write build/Debug/Lab11.bin 0x8000000",
+      "problemMatcher": ["$gcc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

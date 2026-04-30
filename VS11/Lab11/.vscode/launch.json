@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "STM32 Toolchain",
+      "type": "process",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Debug/Lab11.elf",
+      "args": [],
+      "env": {
+        "STM32_TOOLCHAIN_PATH": "/Users/bohaus/Library/Application Support/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin"
+      }
+    }
+  ]
+}
