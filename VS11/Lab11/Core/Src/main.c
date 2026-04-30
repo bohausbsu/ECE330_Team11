@@ -209,6 +209,9 @@ int main(void)
         
         switch (current_state) {
             case STATE_START:
+				if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)) { // Should play until button press?
+					play_message();
+					}
                 memset(&p1, 0, sizeof(PlayerMap));
                 memset(&p2, 0, sizeof(PlayerMap));
                 boats_placed = 0;
@@ -258,6 +261,7 @@ int main(void)
 	  UpdateBuffer();
   }
 	  
+void play_message() {
 	int i,j;
 
 	  Message_Pointer = &Message[0];
@@ -273,7 +277,6 @@ int main(void)
 	  for (int k = 0; k < Message_Length; k++) {
 		  CRC->DR = Message[k];
 	  }
-
 
 	  //********* Read CRC value into CRC_Rx  ********
 
