@@ -1,12 +1,12 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : main.c
+  * @file           : main.c  LAB11
   * @brief          : Main program body
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2022 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -20,7 +20,6 @@
 #include "main.h"
 #include "usb_host.h"
 #include "seg7.h"
-#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -30,48 +29,12 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-// Setup for Arrays
-typedef struct map_s {
-    int horizontal[3][8];
-    int vertical[2][16];
-};
-
-// Game state and Initialization
-typedef enum { STATE_TITLE, STATE_P1_PLACE, STATE_P2_PLACE, STATE_P1_TURN, STATE_P2_TURN, STATE_GAME_OVER} GameState;
-GameState game_state = STATE_TITLE;
-  
-  // Boat Maps
-  // Player 1
-  uint32_t p1_vertical_map = 0;
-  uint32_t p1_horizontal_map = 0;
-  // Player 2
-  uint32_t p2_vertical_map = 0;
-  uint32_t p2_horizontal_map = 0;
-
-  // Shot Maps
-  // Player 1
-  uint32_t p1_vertical_shots = 0;
-  uint32_t p1_Horizontal_shots = 0;
-  // Player 2
-  uint32_t p2_vertical_shots = 0;
-  uint32_t p2_horizontal_shots = 0;
-
-  // Cursor Position
-  uint8_t cursor_row = 0;
-  uint8_t cursor_col = 0;
-  bool cursor_on_vertical = true;
-
-  // Display Buffer
-  uint8_t display_buffer[8];
-
-  // Timing
-  volatile uint32_t systick_ms = 0;
-  volatile uint8_t pwm_counter = 0;
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+
 
 /* USER CODE END PD */
 
@@ -90,123 +53,61 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim7;
 
 /* USER CODE BEGIN PV */
-
+int DelayValue = 50;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_I2S3_Init(void);
-static void MX_SPI1_Init(void);
 static void MX_TIM7_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
-void User_SysTick_Handler(void);
+//void Play_Note(int note,int size,int tempo,int space);
+//extern void Seven_Segment_Digit (unsigned char digit, unsigned char hex_char, unsigned char dot);
+//extern void Seven_Segment(unsigned int HexValue);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// For the title scroll, assuming we have the same recourses as lab 11
-char Title_Length = 0;
-char *Title_Pointer;
+char ramp = 0;
+char RED_BRT = 0;
+char GREEN_BRT = 0;
+char BLUE_BRT = 0;
+char RED_STEP = 1;
+char GREEN_STEP = 2;
+char BLUE_STEP = 3;
+char DIM_Enable = 0;
+char Music_ON = 0;
+int TONE = 0;
+int COUNT = 0;
+int INDEX = 0;
+int Note = 0;
+int Save_Note = 0;
+int Vibrato_Depth = 1;
+int Vibrato_Rate = 40;
+int Vibrato_Count = 0;
+char Animate_On = 0;
+char Message_Length = 0;
+char *Message_Pointer;
 char *Save_Pointer;
+int Delay_msec = 0;
+int Delay_counter = 0;
 
-// BATTLESHIP
-char Title[] = "BATTLESHIP";
+int CRC_Tx = 0xd37e11c9;
+int CRC_Rx = 0;
 
-// Bit Maipulation Sets, May conflict w initial arrays but something to use just in case.
-// Vertical 2x16
-uint32_t get_vert_mask(uint8_t row, uint8_t col) {
-  return (1U << (row * 16 + col));
-}
-// Horizontal 3x8
-uint32_t get_horiz_mask(uint8_t row, uint8_t col) {
-  return (1U << (row * 8 + col));
-}
+/* HELLO ECE-330L */
+char Message[] =
+		{SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,
+		CHAR_H,CHAR_E,CHAR_L,CHAR_L,CHAR_N,CHAR_O,SPACE,CHAR_E,CHAR_C,CHAR_E,DASH,CHAR_3,CHAR_3,CHAR_0,CHAR_L,
+		SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE};
 
-// Cursor from Potentiometers
-void update_cursor_pot(uint16_t adc_x, uint16_t adc_y) {
-  if (cursor_on_vertical) {
-    cursor_col = adc_x / 256; // 0-15
-    cursor_row = adc_y / 2048; // 0-1
-  } else {
-    cursor_col = adc_x / 512; // 0-7
-    cursor_row = adc_y / 1365; // 0-2
-  }
-}
+/* Declare array for Song */
+Music Song[100];
 
-// Boat Placement
-bool place_boat(uint32_t *map, uint8_t row, uint8_t col, bool vertical, bool is_double) {
-    uint32_t mask;
-
-    if (vertical) {
-        mask = get_vert_mask(row, col);
-
-        if (is_double) {
-            if (row == 1) return false; // out of bounds
-            mask |= get_vert_mask(row + 1, col);
-        }
-    } else {
-        mask = get_horiz_mask(row, col);
-
-        if (is_double) {
-            if (col == 7) return false;
-            mask |= get_horiz_mask(row, col + 1);
-        }
-    }
-
-    if ((*map & mask) != 0) return false; // overlap
-
-    *map |= mask;
-    return true;
-}
-
-// Shooting Stuff
-bool take_shot(uint32_t opponent_map, uint32_t *shot_map, uint32_t mask) {
-    *shot_map |= mask;
-
-    if (opponent_map & mask) {
-        return true; // HIT
-    }
-    return false; // MISS
-}
-
-// Win Check
-uint8_t count_hits(uint32_t shots, uint32_t opponent_map) {
-    uint32_t hits = shots & opponent_map;
-
-    uint8_t count = 0;
-    for (int i = 0; i < 32; i++) {
-        if (hits & (1U << i)) count++;
-    }
-    return count;
-}
-
-// User SysTick Handler - called from stm32f4xx_it.c SysTick_Handler
-void User_SysTick_Handler(void) {
-  systick_ms++;
-
-  pwm_counter = (pwm_counter + 1) % 10;
-
-  static uint16_t blink_counter = 0;
-  blink_counter++;
-
-  // cursor_visible currently unused - can be used for blinking cursor
-  // bool cursor_visible = (blink_counter / 250) % 2;
-
-  // For updating the display, implement later
-  for (int i = 0; i < 8; i++) {
-    // display_buffer[i] to hardware
-  }
-
-  // Extras to add later
-    // 7 seg multiplex
-    // PWM brightness
-}
 
 /* USER CODE END 0 */
 
@@ -216,11 +117,7 @@ void User_SysTick_Handler(void) {
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
-
-  // Remove broken draw_board function - will implement later
-  // draw_board function placeholder
 
   /* USER CODE END 1 */
 
@@ -242,141 +139,89 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_I2S3_Init();
-  MX_SPI1_Init();
-  MX_USB_HOST_Init();
+  //MX_I2C1_Init();
+  //MX_I2S3_Init();
+  //MX_SPI1_Init();
+  //MX_USB_HOST_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
-  // Some GPIO config from lab 11
+  /*** Configure GPIOs ***/
   GPIOD->MODER = 0x55555555; // set all Port D pins to outputs
   GPIOA->MODER |= 0x000000FF; // Port A mode register - make A0 to A3 analog pins
   GPIOE->MODER |= 0x55555555; // Port E mode register - make E0 to E15 outputs
   GPIOC->MODER |= 0x0; // Port C mode register - all inputs
   GPIOE->ODR = 0xFFFF; // Set all Port E pins high
 
-  // Config ADC1 -- Just in case is needed for timer (from lab 11)
+  /*** Configure ADC1 ***/
   RCC->APB2ENR |= 1<<8;  // Turn on ADC1 clock by forcing bit 8 to 1 while keeping other bits unchanged
   ADC1->SMPR2 |= 1; // 15 clock cycles per sample
   ADC1->CR2 |= 1;        // Turn on ADC1 by forcing bit 0 to 1 while keeping other bits unchanged
 
-  // Turn on CRC clockk
+  /*** Turn on CRC Clock in AHB1ENR to enable CRC hardware ***/
   RCC->AHB1ENR |= 1<<12; // bit 12 CRCEN on pg 180 for reference
 
-  // Extra functions for the timer, assuming we use the same from lab 11 as implied.
+
+  /*****************************************************************************************************
+  These commands are handled as part of the MX_TIM7_Init() function and don't need to be enabled
+  RCC->AHB1ENR |= 1<<5; // Enable clock for timer 7
+  __enable_irq(); // Enable interrupts
+  NVIC_EnableIRQ(TIM7_IRQn); // Enable Timer 7 Interrupt in the NVIC controller
+  *******************************************************************************************************/
+
   TIM7->PSC = 199; //250Khz timer clock prescaler value, 250Khz = 50Mhz / 200
   TIM7->ARR = 1; // Count to 1 then generate interrupt (divide by 2), 125Khz interrupt rate to increment byte counter for 78Hz PWM
   TIM7->DIER |= 1; // Enable timer 7 interrupt
   TIM7->CR1 |= 1; // Enable timer counting
 
-  // Game loop placeholder - title state
-  while (game_state == STATE_TITLE) {
-    Seven_Segment_ASCII(0, 'B', 0);
-          Seven_Segment_Digit(1, CHAR_A, 0);
-          Seven_Segment_Digit(2, CHAR_T, 0);
-          Seven_Segment_Digit(3, CHAR_T, 0);
-          Seven_Segment_Digit(4, CHAR_L, 0);
-          Seven_Segment_Digit(5, CHAR_E, 0);
-          Seven_Segment_Digit(6, CHAR_S, 0);
-          Seven_Segment_Digit(7, CHAR_H, 0);
-    HAL_Delay(10000);
-  }
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
+
+
+
   while (1)
   {
-    // Game state machine
-    switch (game_state) {
-      case STATE_TITLE:
-        // Display "BATTLESHIP" title on 7-segment displays
-        {
-          // Show "BATTLESHIP" scrolling or static
-          Seven_Segment_ASCII(0, 'B', 0);
-          Seven_Segment_Digit(1, CHAR_A, 0);
-          Seven_Segment_Digit(2, CHAR_T, 0);
-          Seven_Segment_Digit(3, CHAR_T, 0);
-          Seven_Segment_Digit(4, CHAR_L, 0);
-          Seven_Segment_Digit(5, CHAR_E, 0);
-          Seven_Segment_Digit(6, CHAR_S, 0);
-          Seven_Segment_Digit(7, CHAR_H, 0);
-          HAL_Delay(3000); // Display for 3 seconds
-        }
-        // Transition to P1 placement
-        game_state = STATE_P1_PLACE;
-        break;
-      case STATE_P1_PLACE:
-        // Player 1 boat placement
-        // Display "P1" on first two digits
-        Seven_Segment_Digit(0, CHAR_P, 0);
-        Seven_Segment_Digit(1, CHAR_1, 0);
-        // Clear remaining digits
-        for (int i = 2; i < 8; i++) {
-          Seven_Segment_Digit(i, SPACE, 0);
-        }
-        HAL_Delay(2000);
-        game_state = STATE_P2_PLACE;
-        break;
-      case STATE_P2_PLACE:
-        // Player 2 boat placement
-        Seven_Segment_Digit(0, CHAR_P, 0);
-        Seven_Segment_Digit(1, CHAR_2, 0);
-        for (int i = 2; i < 8; i++) {
-          Seven_Segment_Digit(i, SPACE, 0);
-        }
-        HAL_Delay(2000);
-        game_state = STATE_P1_TURN;
-        break;
-      case STATE_P1_TURN:
-        // Player 1 turn
-        Seven_Segment_Digit(0, CHAR_P, 0);
-        Seven_Segment_Digit(1, CHAR_1, 0);
-        Seven_Segment_Digit(2, CHAR_T, 0);
-        Seven_Segment_Digit(3, CHAR_U, 0);
-        Seven_Segment_Digit(4, CHAR_R, 0);
-        Seven_Segment_Digit(5, CHAR_N, 0);
-        for (int i = 6; i < 8; i++) {
-          Seven_Segment_Digit(i, SPACE, 0);
-        }
-        HAL_Delay(2000);
-        game_state = STATE_P2_TURN;
-        break;
-      case STATE_P2_TURN:
-        // Player 2 turn
-        Seven_Segment_Digit(0, CHAR_P, 0);
-        Seven_Segment_Digit(1, CHAR_2, 0);
-        Seven_Segment_Digit(2, CHAR_T, 0);
-        Seven_Segment_Digit(3, CHAR_U, 0);
-        Seven_Segment_Digit(4, CHAR_R, 0);
-        Seven_Segment_Digit(5, CHAR_N, 0);
-        for (int i = 6; i < 8; i++) {
-          Seven_Segment_Digit(i, SPACE, 0);
-        }
-        HAL_Delay(2000);
-        game_state = STATE_P1_TURN;
-        break;
-      case STATE_GAME_OVER:
-        // Game over display
-        Seven_Segment_Digit(0, CHAR_G, 0);
-        Seven_Segment_Digit(1, CHAR_A, 0);
-        Seven_Segment_Digit(2, CHAR_M, 0);
-        Seven_Segment_Digit(3, CHAR_E, 0);
-        Seven_Segment_Digit(4, CHAR_O, 0);
-        Seven_Segment_Digit(5, CHAR_V, 0);
-        Seven_Segment_Digit(6, CHAR_E, 0);
-        Seven_Segment_Digit(7, CHAR_R, 0);
-        HAL_Delay(5000);
-        game_state = STATE_TITLE; // Restart
-        break;
-    }
+	  int i,j;
 
-    HAL_Delay(10);
+	  Message_Pointer = &Message[0];
+	  Save_Pointer = &Message[0];
+	  Message_Length = sizeof(Message)/sizeof(Message[0]);
+	  Delay_msec = 200;
+	  Animate_On = 1;
 
-    /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+	  //********* Reset CRC value ********************
+	  CRC->CR = 0x1;
+
+	  //********* Calculate CRC **********************
+	  for (int k = 0; k < Message_Length; k++) {
+		  CRC->DR = Message[k];
+	  }
+
+
+	  //********* Read CRC value into CRC_Rx  ********
+
+	  CRC_Rx = CRC->DR;
+
+	  GPIOD->ODR = CRC_Rx ^ CRC_Tx;  //XOR the sent and received CRC values and display on LEDs
+
+	  HAL_Delay(5000);           // Delay 5 seconds to allow message to scroll
+
+	  Animate_On = 0;            // Stop scrolling message
+	  Seven_Segment(CRC_Tx);     // Display CRC for sent message
+	  HAL_Delay(1000);           // Delay 1 second
+	  for (i=0 ; i<8 ; i++)      // Clear the display
+	  	  {
+	  		  Seven_Segment_Digit(i,SPACE,0);
+  	  }
+
+	  HAL_Delay(500);           // Delay 1/2 second
+	  Seven_Segment(CRC_Rx);    // Display CRC calculated from received message
+	  HAL_Delay(1000);          // Delay for 1 second
+
 
     /* USER CODE BEGIN 3 */
   }
@@ -433,106 +278,13 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
-}
 
 /**
   * @brief I2S3 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_I2S3_Init(void)
-{
 
-  /* USER CODE BEGIN I2S3_Init 0 */
-
-  /* USER CODE END I2S3_Init 0 */
-
-  /* USER CODE BEGIN I2S3_Init 1 */
-
-  /* USER CODE END I2S3_Init 1 */
-  hi2s3.Instance = SPI3;
-  hi2s3.Init.Mode = I2S_MODE_MASTER_TX;
-  hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
-  hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
-  hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_96K;
-  hi2s3.Init.CPOL = I2S_CPOL_LOW;
-  hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
-  if (HAL_I2S_Init(&hi2s3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2S3_Init 2 */
-
-  /* USER CODE END I2S3_Init 2 */
-
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
 
 /**
   * @brief TIM7 Initialization Function
@@ -580,9 +332,6 @@ static void MX_TIM7_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -665,14 +414,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-
-  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -688,7 +436,8 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-#ifdef USE_FULL_ASSERT
+
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
