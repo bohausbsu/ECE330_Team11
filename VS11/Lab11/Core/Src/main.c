@@ -21,7 +21,7 @@
 #include "usb_host.h"
 #include "seg7.h"
 #include "map.h"
-#include "helper.c"
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -59,6 +59,9 @@ TIM_HandleTypeDef htim7;
 
 /* USER CODE BEGIN PV */
 int DelayValue = 50;
+int cursor_x = 0, cursor_y = 0, cursor_mode = HORIZONTAL;
+int boats_placed = 0;
+PlayerMap p1, p2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,10 +71,18 @@ static void MX_TIM7_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
-//void Play_Note(int note,int size,int tempo,int space);
-//extern void Seven_Segment_Digit (unsigned char digit, unsigned char hex_char, unsigned char dot);
-//extern void Seven_Segment(unsigned int HexValue);
+extern int cursor_x, cursor_y, cursor_mode;
+extern int boats_placed;
+extern PlayerMap p1, p2;
+void play_message();
+void UpdateBuffer();
+uint16_t Read_ADC_Channel(uint32_t channel);
+int PlaceBoat(PlayerMap *p);
+int FireShot(PlayerMap *opponent);
 
+// ADC Channel definitions (if ADC is configured)
+#define ADC_CHANNEL_0 0
+#define ADC_CHANNEL_1 1
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -113,6 +124,18 @@ char Message[] =
 /* Declare array for Song */
 Music Song[100];
 
+// Stub implementations for missing functions
+// TODO: Implement actual ADC reading if ADC hardware is available
+uint16_t Read_ADC_Channel(uint32_t channel) {
+    (void)channel;
+    return 0; // Return 0 if ADC not configured
+}
+
+// TODO: Implement actual buffer update if needed
+void UpdateBuffer(void) {
+    // Placeholder - add display buffer update logic if needed
+}
+
 
 /* USER CODE END 0 */
 
@@ -120,8 +143,7 @@ Music Song[100];
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void) {
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -144,9 +166,9 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_I2S3_Init();
-  MX_SPI1_Init();
+  // MX_I2C1_Init();
+  // MX_I2S3_Init();
+  // MX_SPI1_Init();
   MX_USB_HOST_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */

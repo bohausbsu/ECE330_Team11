@@ -5,6 +5,12 @@
 
 // For Boat placement and shooting logic
 
+// External variables from main.c
+extern int cursor_x, cursor_y, cursor_mode;
+
+// Forward declaration
+uint32_t CalculateBitMask(int x, int y, int mode);
+
 int PlaceBoat(PlayerMap *p) {
     uint32_t *target_map = (cursor_mode == HORIZONTAL) ? &p->boats_horiz : &p->boats_vert;
         uint32_t bit = CalculateBitMask(cursor_x, cursor_y, cursor_mode);

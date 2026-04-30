@@ -16,7 +16,7 @@ typedef struct {
 extern uint8_t display_buffer[8];
 extern int frame_counter; // 0-9 for PWM
 
-void SetHorizontalBoat(uint32_t *map, int x, int y) {
+static inline void SetHorizontalBoat(uint32_t *map, int x, int y) {
     // y = 0 is top row (bit 16-23)
     // y = 1 is mid row (bit 8-15)
     // y = 2 is bot row (bit 0-7)
@@ -24,7 +24,7 @@ void SetHorizontalBoat(uint32_t *map, int x, int y) {
     *map |= (1UL << shift);
 }
 
-void SetVerticalBoat(uint32_t *map, int x, int y, int side) {
+static inline void SetVerticalBoat(uint32_t *map, int x, int y, int side) {
     // y = 0 is top vert (bits 16-31)
     // y = 1 is bot vert (bits 0-15)
     // Side 0 is left, 1 is right
