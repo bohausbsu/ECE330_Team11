@@ -209,7 +209,7 @@ int main(void)
         
         switch (current_state) {
             case STATE_START:
-				if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)) { // Should play until button press?
+				if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_11)) { // Should play until button press?
 					play_message();
 					}
                 memset(&p1, 0, sizeof(PlayerMap));
