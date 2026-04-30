@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build STM32",
+            "type": "shell",
+            "command": "/opt/homebrew/bin/cmake --build ${workspaceFolder}/build/Debug",
+            "problemMatcher": [],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Flash STM32",
+            "type": "shell",
+            "command": "openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c \"program ${workspaceFolder}/build/Debug/FINALPROJ.elf verify reset exit\"",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Build & Flash STM32",
+            "type": "shell",
+            "command": "/opt/homebrew/bin/cmake --build ${workspaceFolder}/build/Debug && openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c \"program ${workspaceFolder}/build/Debug/FINALPROJ.elf verify reset exit\"",
+            "problemMatcher": [],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+}

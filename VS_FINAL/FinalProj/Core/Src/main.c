@@ -19,6 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usb_host.h"
+#include "seg7.h"
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -32,11 +34,10 @@
 typedef struct map_s {
     int horizontal[3][8];
     int vertical[2][16];
-}
+};
 
 // Game state and Initialization
-typedef enum { STATE_TITLE, STATE_P1_PLACE, STATE_P2_PLACE,
-               STATE_P1_TURN, STATE_P2_TURN, STATE_GAME_OVER} GameState;
+typedef enum { STATE_TITLE, STATE_P1_PLACE, STATE_P2_PLACE, STATE_P1_TURN, STATE_P2_TURN, STATE_GAME_OVER} GameState;
 GameState game_state = STATE_TITLE;
   
   // Boat Maps
@@ -56,8 +57,8 @@ GameState game_state = STATE_TITLE;
   uint32_t p2_horizontal_shots = 0;
 
   // Cursor Position
-  uint8_t = cursor_row = 0;
-  uint8_t = cursor_col = 0;
+  uint8_t cursor_row = 0;
+  uint8_t cursor_col = 0;
   bool cursor_on_vertical = true;
 
   // Display Buffer
@@ -102,6 +103,7 @@ static void MX_TIM7_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
+void User_SysTick_Handler(void);
 
 /* USER CODE END PFP */
 
@@ -114,7 +116,7 @@ char *Title_Pointer;
 char *Save_Pointer;
 
 // BATTLESHIP
-char Title[] = {CHAR_B, CHAR_A, CHAR_T, CHAR_T, CHAR_L, CHAR_E, CHAR_S, CHAR_H, CHAR_I, CHAR_P};
+char Title[] = "BATTLESHIP";
 
 // Bit Maipulation Sets, May conflict w initial arrays but something to use just in case.
 // Vertical 2x16
@@ -122,7 +124,7 @@ uint32_t get_vert_mask(uint8_t row, uint8_t col) {
   return (1U << (row * 16 + col));
 }
 // Horizontal 3x8
-uint32_t get_horiz_mask(uint8_t row, uint_t col) {
+uint32_t get_horiz_mask(uint8_t row, uint8_t col) {
   return (1U << (row * 8 + col));
 }
 
@@ -184,8 +186,8 @@ uint8_t count_hits(uint32_t shots, uint32_t opponent_map) {
     return count;
 }
 
-// SysTick Handler
-void SysTick_Handler(void) {
+// User SysTick Handler - called from stm32f4xx_it.c SysTick_Handler
+void User_SysTick_Handler(void) {
   systick_ms++;
 
   pwm_counter = (pwm_counter + 1) % 10;
@@ -193,7 +195,8 @@ void SysTick_Handler(void) {
   static uint16_t blink_counter = 0;
   blink_counter++;
 
-  bool cursor_visible = (blink_counter / 250) % 2;
+  // cursor_visible currently unused - can be used for blinking cursor
+  // bool cursor_visible = (blink_counter / 250) % 2;
 
   // For updating the display, implement later
   for (int i = 0; i < 8; i++) {
@@ -216,30 +219,9 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
- // Initial setup for initializing arrays into 7 seg.
- draw_board(struct map_s M) {
-    char board[8] = {0};
+  // Remove broken draw_board function - will implement later
+  // draw_board function placeholder
 
-    // Horizontal (Unsure if it is supposed to flip thru array or just assign values)
-    for i=0 upto 8 {
-      // Top
-      board[i] 1 = horizontal[3][i];
-      // Mid
-      board[i] 1 = {0,1,2,3,4,5,6,7};
-      // Bot
-      board[i] 1 = {0,1,2,3,4,5,6,7};
-    }
-
-    // Vertical
-    for i=0 upto 8 {
-      //Top Left
-      board[i] 1 = ;
-      //Bot Left
-      //Top Right
-      //Bot Right
-    }
-  }
- 
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -279,7 +261,7 @@ int main(void)
   ADC1->SMPR2 |= 1; // 15 clock cycles per sample
   ADC1->CR2 |= 1;        // Turn on ADC1 by forcing bit 0 to 1 while keeping other bits unchanged
 
-  // Turn on CRC clock
+  // Turn on CRC clockk
   RCC->AHB1ENR |= 1<<12; // bit 12 CRCEN on pg 180 for reference
 
   // Extra functions for the timer, assuming we use the same from lab 11 as implied.
@@ -287,52 +269,112 @@ int main(void)
   TIM7->ARR = 1; // Count to 1 then generate interrupt (divide by 2), 125Khz interrupt rate to increment byte counter for 78Hz PWM
   TIM7->DIER |= 1; // Enable timer 7 interrupt
   TIM7->CR1 |= 1; // Enable timer counting
- 
+
+  // Game loop placeholder - title state
+  while (game_state == STATE_TITLE) {
+    Seven_Segment_ASCII(0, 'B', 0);
+              Seven_Segment_Digit(1, CHAR_A, 0);
+          Seven_Segment_Digit(2, CHAR_T, 0);
+          Seven_Segment_Digit(3, CHAR_T, 0);
+          Seven_Segment_Digit(4, CHAR_L, 0);
+          Seven_Segment_Digit(5, CHAR_E, 0);
+          Seven_Segment_Digit(6, CHAR_S, 0);
+          Seven_Segment_Digit(7, CHAR_H, 0);
+    HAL_Delay(10000);
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    // Game state machine
+    switch (game_state) {
+      case STATE_TITLE:
+        // Display "BATTLESHIP" title on 7-segment displays
+        {
+          // Show "BATTLESHIP" scrolling or static
+          Seven_Segment_ASCII(0, 'B', 0);
+          Seven_Segment_Digit(1, CHAR_A, 0);
+          Seven_Segment_Digit(2, CHAR_T, 0);
+          Seven_Segment_Digit(3, CHAR_T, 0);
+          Seven_Segment_Digit(4, CHAR_L, 0);
+          Seven_Segment_Digit(5, CHAR_E, 0);
+          Seven_Segment_Digit(6, CHAR_S, 0);
+          Seven_Segment_Digit(7, CHAR_H, 0);
+          HAL_Delay(3000); // Display for 3 seconds
+        }
+        // Transition to P1 placement
+        game_state = STATE_P1_PLACE;
+        break;
+      case STATE_P1_PLACE:
+        // Player 1 boat placement
+        // Display "P1" on first two digits
+        Seven_Segment_Digit(0, CHAR_P, 0);
+        Seven_Segment_Digit(1, CHAR_1, 0);
+        // Clear remaining digits
+        for (int i = 2; i < 8; i++) {
+          Seven_Segment_Digit(i, SPACE, 0);
+        }
+        HAL_Delay(2000);
+        game_state = STATE_P2_PLACE;
+        break;
+      case STATE_P2_PLACE:
+        // Player 2 boat placement
+        Seven_Segment_Digit(0, CHAR_P, 0);
+        Seven_Segment_Digit(1, CHAR_2, 0);
+        for (int i = 2; i < 8; i++) {
+          Seven_Segment_Digit(i, SPACE, 0);
+        }
+        HAL_Delay(2000);
+        game_state = STATE_P1_TURN;
+        break;
+      case STATE_P1_TURN:
+        // Player 1 turn
+        Seven_Segment_Digit(0, CHAR_P, 0);
+        Seven_Segment_Digit(1, CHAR_1, 0);
+        Seven_Segment_Digit(2, CHAR_T, 0);
+        Seven_Segment_Digit(3, CHAR_U, 0);
+        Seven_Segment_Digit(4, CHAR_R, 0);
+        Seven_Segment_Digit(5, CHAR_N, 0);
+        for (int i = 6; i < 8; i++) {
+          Seven_Segment_Digit(i, SPACE, 0);
+        }
+        HAL_Delay(2000);
+        game_state = STATE_P2_TURN;
+        break;
+      case STATE_P2_TURN:
+        // Player 2 turn
+        Seven_Segment_Digit(0, CHAR_P, 0);
+        Seven_Segment_Digit(1, CHAR_2, 0);
+        Seven_Segment_Digit(2, CHAR_T, 0);
+        Seven_Segment_Digit(3, CHAR_U, 0);
+        Seven_Segment_Digit(4, CHAR_R, 0);
+        Seven_Segment_Digit(5, CHAR_N, 0);
+        for (int i = 6; i < 8; i++) {
+          Seven_Segment_Digit(i, SPACE, 0);
+        }
+        HAL_Delay(2000);
+        game_state = STATE_P1_TURN;
+        break;
+      case STATE_GAME_OVER:
+        // Game over display
+        Seven_Segment_Digit(0, CHAR_G, 0);
+        Seven_Segment_Digit(1, CHAR_A, 0);
+        Seven_Segment_Digit(2, CHAR_M, 0);
+        Seven_Segment_Digit(3, CHAR_E, 0);
+        Seven_Segment_Digit(4, CHAR_O, 0);
+        Seven_Segment_Digit(5, CHAR_V, 0);
+        Seven_Segment_Digit(6, CHAR_E, 0);
+        Seven_Segment_Digit(7, CHAR_R, 0);
+        HAL_Delay(5000);
+        game_state = STATE_TITLE; // Restart
+        break;
+    }
 
-   // Implemented Title scroll, Right now is assumed it will only work at the beginning of the game on repeat.
-   int i,j;
+    HAL_Delay(10);
 
-	  Title_Pointer = &Title[0];
-	  Save_Pointer = &Title[0];
-	  Title_Length = sizeof(Title)/sizeof(Title[0]);
-	  Delay_msec = 200;
-	  Animate_On = 1;
-
-	  //********* Reset CRC value ********************
-	  CRC->CR = 0x1;
-
-	  //********* Calculate CRC **********************
-	  for (int k = 0; k < Title_Length; k++) {
-		  CRC->DR = Title[k];
-	  }
-   
-	  //********* Read CRC value into CRC_Rx  ********
-	  CRC_Rx = CRC->DR;
-
-	  GPIOD->ODR = CRC_Rx ^ CRC_Tx;  //XOR the sent and received CRC values and display on LEDs
-
-	  HAL_Delay(5000);           // Delay 5 seconds to allow message to scroll
-
-	  Animate_On = 0;            // Stop scrolling message
-	  Seven_Segment(CRC_Tx);     // Display CRC for sent message
-	  HAL_Delay(1000);           // Delay 1 second
-	  for (i=0 ; i<8 ; i++)      // Clear the display
-	  	 {
-	  		  Seven_Segment_Digit(i,SPACE,0);
-  	  }
-
-	  HAL_Delay(500);           // Delay 1/2 second
-	  Seven_Segment(CRC_Rx);    // Display CRC calculated from received message
-	  HAL_Delay(1000);          // Delay for 1 second
-    
-   // End title scroll bit
-   
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 

@@ -14,7 +14,6 @@ target_link_options(${BUILD_UNIT_0_NAME} PRIVATE ${CUBE_CMAKE_EXE_LINKER_FLAGS})
 # Add sources to executable/library
 target_sources(${BUILD_UNIT_0_NAME} PRIVATE
     "Core/Src/main.c"
-    "Core/Src/seg7.c"
     "Core/Src/stm32f4xx_hal_msp.c"
     "Core/Src/stm32f4xx_it.c"
     "Core/Src/syscalls.c"
