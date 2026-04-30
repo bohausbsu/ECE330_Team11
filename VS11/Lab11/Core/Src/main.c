@@ -20,6 +20,8 @@
 #include "main.h"
 #include "usb_host.h"
 #include "seg7.h"
+#include "map.h"
+#include "helper.c"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -28,7 +30,10 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef enum Game_State_Title { STATE_START, STATE_P1_PLACE,
+                STATE_P2_PLACE, STATE_P1_TURN,
+                STATE_P2_TURN, STATE_GAME_OVER
+              } GameState;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -102,7 +107,7 @@ int CRC_Rx = 0;
 /* HELLO ECE-330L */
 char Message[] =
 		{SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,
-		CHAR_H,CHAR_E,CHAR_L,CHAR_L,CHAR_N,CHAR_O,SPACE,CHAR_E,CHAR_C,CHAR_E,DASH,CHAR_3,CHAR_3,CHAR_0,CHAR_L,
+		CHAR_B, CHAR_A, CHAR_T, CHAR_T, CHAR_L, CHAR_E,
 		SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE};
 
 /* Declare array for Song */
@@ -139,10 +144,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  //MX_I2C1_Init();
-  //MX_I2S3_Init();
-  //MX_SPI1_Init();
-  //MX_USB_HOST_Init();
+  MX_I2C1_Init();
+  MX_I2S3_Init();
+  MX_SPI1_Init();
+  MX_USB_HOST_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
@@ -179,13 +184,85 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
-
-
+	// Setups to set values to 0 on start.
+	PlayerMap player1, player2;
+	GameState current_state = STATE_START;
+	int cursor_x = 0, cursor_y = 0, cursor_mode = HORIZONTAL;
+	int p1_score = 0, p2_score = 0;
+	char marquee_text[50];
 
   while (1)
   {
-	  int i,j;
+	// 1. Read Potentiometers (Assuming ADC is configured for Rank 1 and 2)
+    // Scale X (0-4095) to 0-7 for digits
+    cursor_x = (Read_ADC_Channel(ADC_CHANNEL_0) * 8) / 4096; 
+    
+    // Scale Y (0-4095) to 3 (Horizontal rows) or 2 (Vertical rows)
+    if (cursor_mode == HORIZONTAL)
+        cursor_y = (Read_ADC_Channel(ADC_CHANNEL_1) * 3) / 4096;
+    else
+        cursor_y = (Read_ADC_Channel(ADC_CHANNEL_1) * 2) / 4096;
+
+    // 2. Handle Action (Button PA0)
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)) {
+        HAL_Delay(250);
+        
+        switch (current_state) {
+            case STATE_START:
+				if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_11)) { // Should play until button press?
+					play_message();
+					}
+                memset(&p1, 0, sizeof(PlayerMap));
+                memset(&p2, 0, sizeof(PlayerMap));
+                boats_placed = 0;
+                current_state = STATE_P1_PLACE;
+                break;
+			case STATE_P1_PLACE:
+                if (PlaceBoat(&p1)) {
+                    boats_placed++;
+                    if (boats_placed >= 7) {
+                        boats_placed = 0;
+                        current_state = STATE_P2_PLACE;
+                    }
+                }
+                break;
+
+            case STATE_P2_PLACE:
+                if (PlaceBoat(&p2)) {
+                    boats_placed++;
+                    if (boats_placed >= 7) {
+                        current_state = STATE_P1_TURN;
+                    }
+                }
+                break;
+
+            case STATE_P1_TURN:
+                // Player 1 fires at Player 2's map
+                if (FireShot(&p2)) {
+                    if (p2.hits_received >= 7) current_state = STATE_GAME_OVER;
+                    else current_state = STATE_P2_TURN;
+                }
+                break;
+
+            case STATE_P2_TURN:
+                // Player 2 fires at Player 1's map
+                if (FireShot(&p1)) {
+                    if (p1.hits_received >= 7) current_state = STATE_GAME_OVER;
+                    else current_state = STATE_P1_TURN;
+                }
+                break;
+
+            case STATE_GAME_OVER:
+                current_state = STATE_START;
+                break;
+		}
+	}
+
+	  UpdateBuffer();
+  }
+	  
+void play_message() {
+	int i,j;
 
 	  Message_Pointer = &Message[0];
 	  Save_Pointer = &Message[0];
@@ -200,7 +277,6 @@ int main(void)
 	  for (int k = 0; k < Message_Length; k++) {
 		  CRC->DR = Message[k];
 	  }
-
 
 	  //********* Read CRC value into CRC_Rx  ********
 
